@@ -1,0 +1,17 @@
+.hero {
+    width: 100%;
+    padding-top: 80px;
+    background: #050816;
+
+    height: 120vh;      /* Try 80vh or 85vh if you want it even shorter */
+    overflow: hidden;
+     margin-top: -40px;
+}
+
+.hero img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center top; /* Keeps the important top part visible */
+    display: block;
+}

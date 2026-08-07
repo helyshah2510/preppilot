@@ -1,0 +1,48 @@
+.topbar {
+    min-height: 120px;
+
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+
+    padding: 35px 50px 25px;
+}
+
+.topbar-left h2 {
+    color: white;
+    font-size: 2.1rem;
+    font-weight: 700;
+    margin-bottom: 8px;
+    line-height: 1.2;
+}
+
+.topbar-left p {
+    color: #9CA3AF;
+    font-size: 1rem;
+}
+
+.topbar-right {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.start-interview-btn {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 8px;
+  background: #7C6CFF;
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.start-interview-btn:hover {
+  background: #6d5ce6;
+  transform: translateY(-1px);
+}

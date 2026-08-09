@@ -1,19 +1,57 @@
 import "./Auth.css";
+import { supabase } from "../../lib/supabase";
 import { Link, useNavigate } from "react-router-dom";
 import { Eye, EyeOff } from "lucide-react";
 import { useState } from "react";
 
 function Signup() {
+  const navigate = useNavigate();
+
+  const [fullName, setFullName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
 
-  const navigate = useNavigate();
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const handleSignup = (e: React.FormEvent) => {
+  const handleSignup = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
-    // Temporary navigation
-    // Tomorrow this will be replaced with Supabase authentication
+    setError("");
+
+    if (password !== confirmPassword) {
+      setError("Passwords do not match.");
+      return;
+    }
+
+    if (password.length < 6) {
+      setError("Password must be at least 6 characters.");
+      return;
+    }
+
+    setLoading(true);
+
+    const { error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: {
+          full_name: fullName,
+        },
+      },
+    });
+
+    setLoading(false);
+
+    if (error) {
+      setError(error.message);
+      return;
+    }
+
     navigate("/dashboard");
   };
 
@@ -35,6 +73,9 @@ function Signup() {
             <input
               type="text"
               placeholder="John Doe"
+              value={fullName}
+              onChange={(e) => setFullName(e.target.value)}
+              required
             />
           </div>
 
@@ -44,6 +85,9 @@ function Signup() {
             <input
               type="email"
               placeholder="you@example.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
             />
           </div>
 
@@ -54,6 +98,9 @@ function Signup() {
               <input
                 type={showPassword ? "text" : "password"}
                 placeholder="••••••••"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
               />
 
               <button
@@ -77,6 +124,9 @@ function Signup() {
               <input
                 type={showConfirm ? "text" : "password"}
                 placeholder="••••••••"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                required
               />
 
               <button
@@ -93,15 +143,25 @@ function Signup() {
             </div>
           </div>
 
-          <button className="auth-btn" type="submit">
-            Create Account
+          {error && (
+            <p className="auth-error">
+              {error}
+            </p>
+          )}
+
+          <button
+            className="auth-btn"
+            type="submit"
+            disabled={loading}
+          >
+            {loading ? "Creating Account..." : "Create Account"}
           </button>
         </form>
 
         <p className="terms">
           By signing up you agree to our
-          <Link to="/"> Terms</Link> &
-          <Link to="/"> Privacy Policy</Link>
+          <Link to="/"> Terms</Link> &{" "}
+          <Link to="/">Privacy Policy</Link>
         </p>
 
         <p className="bottom-text">

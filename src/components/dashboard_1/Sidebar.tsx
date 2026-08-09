@@ -1,4 +1,6 @@
 import "./Sidebar.css";
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   LayoutDashboard,
   Mic,
@@ -10,8 +12,39 @@ import {
   LogOut,
   UserCircle2,
 } from "lucide-react";
+import type { User } from "@supabase/supabase-js";
+import { supabase } from "../../lib/supabase";
 
 function Sidebar() {
+  const [user, setUser] = useState<User | null>(null);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const getCurrentUser = async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      setUser(user);
+    };
+
+    getCurrentUser();
+  }, []);
+
+  const handleLogout = async () => {
+    const { error } = await supabase.auth.signOut();
+
+    if (!error) {
+      navigate("/");
+    }
+  };
+
+  const displayName =
+    typeof user?.user_metadata.full_name === "string" &&
+    user.user_metadata.full_name.trim()
+      ? user.user_metadata.full_name
+      : user?.email ?? "";
+
   return (
     <aside className="sidebar">
 
@@ -74,15 +107,13 @@ function Sidebar() {
 
           <div>
 
-            <h4>Hely Shah</h4>
-
-            <p>Student</p>
+            <h4>{displayName}</h4>
 
           </div>
 
         </div>
 
-        <button>
+        <button onClick={handleLogout}>
 
           <LogOut size={18} />
 

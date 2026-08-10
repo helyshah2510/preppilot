@@ -1,0 +1,25 @@
+.progress-page {
+  flex: 1;
+  min-width: 0;
+  min-height: 100vh;
+
+  padding: 40px 50px;
+
+  background: #080a17;
+  color: white;
+}
+.progress-layout {
+  display: flex;
+  min-height: 100vh;
+  background: #080a17;
+}
+
+.progress-chart {
+    display: grid;
+
+    grid-template-columns: minmax(0, 2fr) minmax(280px, 1fr);
+
+    gap: 20px;
+
+    padding: 0 50px 40px;
+}

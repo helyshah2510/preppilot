@@ -1,7 +1,9 @@
 import "./Topbar.css";
+import { useNavigate} from "react-router-dom";
 //import { Bell, CircleUserRound } from "lucide-react";
 
 function Topbar() {
+  const navigate=useNavigate();
   return (
     <header className="topbar">
 
@@ -11,7 +13,8 @@ function Topbar() {
       </div>
 
       <div className="topbar-right">
-        <button className="start-interview-btn">
+        <button className="start-interview-btn"
+        onClick={()=> navigate("/mock-interview")}>
           + Start Interview
         </button>
       </div>

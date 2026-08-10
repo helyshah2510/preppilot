@@ -3,6 +3,13 @@ import SignUp from "./pages/signup_login/Signup";
 import Login from "./pages/signup_login/Login";
 import Landing from "./pages/landing_1/Landing";
 import Dashboard from "./pages/dashboard/Dashboard";
+import MockInterview from "./pages/MockInterview/MockInterview";
+import ActiveInterview from "./pages/MockInterview/ActiveInterview/ActiveInterview";
+import InterviewResult from "./pages/MockInterview/ActiveInterview/InterviewResult";
+import ResumeAnalyzer from "./pages/ResumeAnalyzer/ResumeAnalyzer";
+import DSAPractice from "./pages/DSA/DSAprac";
+import LearningRoadmap from "./pages/Roadmap/LearningRoadmap";
+import Progress from "./pages/progress/Progress";
 
 function App() {
   return (
@@ -15,6 +22,13 @@ function App() {
         <Route path="/login" element={<Login />} />
 
         <Route path="/dashboard" element={<Dashboard/>}/>
+        <Route path="/mock-interview" element={<MockInterview/>}/>
+        <Route path="/mock-interview/session" element={<ActiveInterview/>}/>
+        <Route path="/mock-interview/result" element={<InterviewResult/>}/>
+        <Route path="/resume-analyzer" element={<ResumeAnalyzer/>}/>
+        <Route path="/dsa-practice" element={<DSAPractice/>}/>
+        <Route path="/learning-roadmap" element={<LearningRoadmap/>}/>
+        <Route path="/progress" element={<Progress/>}/>
 
       </Routes>
   );

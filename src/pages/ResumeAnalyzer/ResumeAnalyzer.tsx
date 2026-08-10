@@ -1,4 +1,8 @@
 import "./ResumeAnalyzer.css";
+import { supabase } from "../../lib/supabase";
+import * as pdfjsLib from "pdfjs-dist";
+import mammoth from "mammoth";
+import { useRef,useState } from "react";
 import Sidebar from "../../components/dashboard_1/Sidebar";
 import {
   Upload,
@@ -9,7 +13,141 @@ import {
   Lightbulb,
 } from "lucide-react";
 
+pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
+  "pdfjs-dist/build/pdf.worker.mjs",
+  import.meta.url
+).toString();
+
 function ResumeAnalyzer() {
+    const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+    const [selectedFile, setSelectedFile] = useState<File | null>(null);
+
+    const [error, setError] = useState("");
+    const [analysis, setAnalysis] = useState<any>(null);
+    const [isAnalyzing, setIsAnalyzing] = useState(false);
+
+    const handleChooseFile = () => {
+    fileInputRef.current?.click();
+    };
+
+    const extractResumeText = async (file: File) => {
+        if (file.type === "application/pdf") {
+            const arrayBuffer = await file.arrayBuffer();
+
+            const pdf = await pdfjsLib.getDocument({
+            data: arrayBuffer,
+            }).promise;
+
+            let fullText = "";
+
+            for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber++) {
+                const page = await pdf.getPage(pageNumber);
+
+                const textContent = await page.getTextContent();
+
+                const pageText = textContent.items
+                .map((item) => {
+                    if ("str" in item) {
+                        return item.str;
+                    }
+
+                    return "";
+                })
+                .join(" ");
+
+                fullText += pageText + "\n";
+            }
+
+            return fullText;
+        }
+
+        if (
+            file.type ===
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        ) {
+            const arrayBuffer = await file.arrayBuffer();
+
+            const result = await mammoth.extractRawText({
+                arrayBuffer,
+            });
+
+            return result.value;
+        }
+
+        throw new Error("Unsupported file type.");
+    };
+
+    const handleFileChange = async(
+        event: React.ChangeEvent<HTMLInputElement>
+    ) => {
+        const file = event.target.files?.[0];
+
+        if (!file) {
+            return;
+        }
+
+        setError("");
+
+        // Check file type
+        const allowedTypes = [
+            "application/pdf",
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        ];
+
+        if (!allowedTypes.includes(file.type)) {
+            setError("Please upload a PDF or DOCX file.");
+            return;
+        }
+
+        // Check file size: 5 MB
+        const maxSize = 5 * 1024 * 1024;
+
+        if (file.size > maxSize) {
+            setError("File size must be less than 5 MB.");
+            return;
+        }
+
+        setSelectedFile(file);
+
+        console.log("Selected file:", file);
+        try {
+            const text = await extractResumeText(file);
+
+            console.log("===== RESUME TEXT =====");
+            console.log(text);
+            console.log("=======================");
+            setIsAnalyzing(true);
+
+            const { data, error } = await supabase.functions.invoke(
+                "analyze-resume",
+                {
+                    body: {
+                        resumeText: text,
+                    },
+                }
+            );
+
+            setIsAnalyzing(false);
+
+            if (error) {
+                console.error("Resume analysis error:", error);
+                setError("Could not analyze this resume. Please try again.");
+                return;
+            }
+
+            console.log("AI ANALYSIS:", data);
+
+            setAnalysis(data.analysis);
+        } catch (error) {
+            console.error("Error extracting resume:", error);
+            setIsAnalyzing(false);
+
+            setError(
+                "Could not read this resume. Please try another file."
+            );
+        }
+    };
   return (
     <div className="resume-analyzer-layout">
 
@@ -39,11 +177,32 @@ function ResumeAnalyzer() {
             <h2>Drop your resume here or browse</h2>
 
             <p>Supports PDF, DOCX up to 5 MB</p>
-
-            <button className="choose-file-btn">
+            <button
+            className="choose-file-btn"
+            onClick={handleChooseFile}
+            >
             <Upload size={18} />
             Choose File
             </button>
+
+            <input
+            ref={fileInputRef}
+            type="file"
+            accept=".pdf,.docx"
+            onChange={handleFileChange}
+            style={{ display: "none" }}
+            />
+            {error && (
+                <p
+                    style={{
+                    color: "#f87171",
+                    marginTop: "15px",
+                    marginBottom: 0,
+                    }}
+                >
+                    {error}
+                </p>
+            )}
 
         </section>
 
@@ -59,8 +218,15 @@ function ResumeAnalyzer() {
             </div>
 
             <div>
-                <h3>Hely_Shah_Resume.pdf</h3>
-                <p>Analyzed just now</p>
+                <h3>{selectedFile
+                    ? selectedFile.name
+                    : "Hely_Shah_Resume.pdf"}
+                </h3>
+               <p>
+                    {selectedFile
+                        ? "Ready to analyze"
+                        : "Analyzed just now"}
+                </p>
             </div>
 
             </div>
@@ -82,7 +248,7 @@ function ResumeAnalyzer() {
             <section className="score-card">
 
             <div className="score-circle">
-                <span>81</span>
+                <span>{analysis?.overallScore ?? 0}</span>
             </div>
 
             <p>Overall match score</p>
@@ -98,11 +264,17 @@ function ResumeAnalyzer() {
 
                 <div className="metric-header">
                 <span>ATS readability</span>
-                <strong className="metric-green">92%</strong>
+                <strong className="metric-green">
+                    {analysis?.atsReadability ?? 0}%
+                </strong>
                 </div>
 
                 <div className="metric-bar">
-                <span style={{ width: "92%" }}></span>
+                    <span
+                        style={{
+                            width: `${analysis?.atsReadability ?? 0}%`,
+                        }}
+                    ></span>
                 </div>
 
             </div>
@@ -112,11 +284,17 @@ function ResumeAnalyzer() {
 
                 <div className="metric-header">
                 <span>Keyword match</span>
-                <strong className="metric-orange">68%</strong>
+                <strong className="metric-orange">
+                    {analysis?.keywordMatch ?? 0}%
+                </strong>
                 </div>
 
                 <div className="metric-bar keyword">
-                <span style={{ width: "68%" }}></span>
+                    <span
+                    style={{
+                        width: `${analysis?.keywordMatch ?? 0}%`,
+                    }}
+                    ></span>
                 </div>
 
             </div>

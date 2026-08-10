@@ -23,6 +23,7 @@ function ActiveInterview() {
   const [question, setQuestion] = useState("");
   const [answer, setAnswer] = useState("");
   const [loading, setLoading] = useState(true);
+  const [evaluating, setEvaluating] = useState(false);
 
   const [showTextInput, setShowTextInput] = useState(false);
   const [isListening, setIsListening] = useState(false);
@@ -57,10 +58,53 @@ function ActiveInterview() {
     }
   }, [interviewType]);
 
-  // Generate first question
+  // Start interview
   useEffect(() => {
+    // Clear any previous interview data
+    sessionStorage.removeItem("preppilot-interview");
+    sessionStorage.removeItem("preppilot-interview-result");
+
+    // Store basic interview information
+    sessionStorage.setItem(
+      "preppilot-interview",
+      JSON.stringify({
+        type: interviewType,
+        questions: [],
+      })
+    );
+
     generateQuestion();
-  }, [generateQuestion]);
+  }, [generateQuestion, interviewType]);
+
+  // Save a question and answer
+  const saveQuestionAnswer = (
+    currentQuestion: string,
+    currentAnswer: string
+  ) => {
+    const existingInterview = sessionStorage.getItem(
+      "preppilot-interview"
+    );
+
+    const interviewData = existingInterview
+      ? JSON.parse(existingInterview)
+      : {
+          type: interviewType,
+          questions: [],
+        };
+
+    interviewData.questions.push({
+      questionNumber,
+      question: currentQuestion,
+      answer: currentAnswer,
+    });
+
+    sessionStorage.setItem(
+      "preppilot-interview",
+      JSON.stringify(interviewData)
+    );
+
+    return interviewData;
+  };
 
   // Move to next question
   const goToNextQuestion = async () => {
@@ -68,24 +112,95 @@ function ActiveInterview() {
       return;
     }
 
+    if (!answer.trim()) {
+      return;
+    }
+
+    // Save current question + answer
+    saveQuestionAnswer(question, answer);
+
+    // Move to next question
     setQuestionNumber((previous) => previous + 1);
 
-    // Clear previous answer/input
+    // Clear previous answer
+    setAnswer("");
+    setShowTextInput(false);
+
+    // Generate next question
+    await generateQuestion();
+  };
+
+  // Skip current question
+  const handleSkip = async () => {
+    if (questionNumber >= totalQuestions || loading) {
+      return;
+    }
+
+    // Save skipped question with empty answer
+    saveQuestionAnswer(question, "");
+
+    // Move to next question
+    setQuestionNumber((previous) => previous + 1);
+
     setAnswer("");
     setShowTextInput(false);
 
     await generateQuestion();
   };
 
-  // Skip current question
-  const handleSkip = async () => {
-    await goToNextQuestion();
-  };
+  // Evaluate the completed interview
+  const handleSubmit = async () => {
+    if (questionNumber !== totalQuestions || evaluating) {
+      return;
+    }
 
-  // Submit final interview
-  const handleSubmit = () => {
-    if (questionNumber === totalQuestions) {
+    setEvaluating(true);
+
+    try {
+      // Save Question 5 + its answer
+      const interviewData = saveQuestionAnswer(
+        question,
+        answer
+      );
+
+      console.log("Interview data:", interviewData);
+
+      // Send all questions and answers to evaluation Edge Function
+      const { data, error } = await supabase.functions.invoke(
+        "evaluate-interview",
+        {
+          body: interviewData,
+        }
+      );
+
+      if (error) {
+        console.error("Error evaluating interview:", error);
+
+        alert(
+          "There was a problem evaluating your interview. Please try again."
+        );
+
+        return;
+      }
+
+      console.log("Evaluation result:", data);
+
+      // Store AI result for Result page
+      sessionStorage.setItem(
+        "preppilot-interview-result",
+        JSON.stringify(data)
+      );
+
+      // Go to result page
       navigate("/mock-interview/result");
+    } catch (error) {
+      console.error("Unexpected evaluation error:", error);
+
+      alert(
+        "Something went wrong while evaluating your interview."
+      );
+    } finally {
+      setEvaluating(false);
     }
   };
 
@@ -113,7 +228,8 @@ function ActiveInterview() {
     };
 
     recognition.onresult = (event: any) => {
-      const transcript = event.results[0][0].transcript;
+      const transcript =
+        event.results[0][0].transcript;
 
       setAnswer((previous) => {
         if (previous.trim()) {
@@ -125,7 +241,11 @@ function ActiveInterview() {
     };
 
     recognition.onerror = (event: any) => {
-      console.error("Speech recognition error:", event.error);
+      console.error(
+        "Speech recognition error:",
+        event.error
+      );
+
       setIsListening(false);
     };
 
@@ -160,14 +280,18 @@ function ActiveInterview() {
       {/* Progress */}
 
       <div className="question-progress">
-        {Array.from({ length: totalQuestions }).map((_, index) => (
-          <span
-            key={index}
-            className={`progress-step ${
-              index < questionNumber ? "active" : ""
-            }`}
-          ></span>
-        ))}
+        {Array.from({ length: totalQuestions }).map(
+          (_, index) => (
+            <span
+              key={index}
+              className={`progress-step ${
+                index < questionNumber
+                  ? "active"
+                  : ""
+              }`}
+            ></span>
+          )
+        )}
       </div>
 
       {/* Question */}
@@ -187,7 +311,6 @@ function ActiveInterview() {
       {/* Answer Area */}
 
       <section className="answer-section">
-
         <div className="answer-header">
           <div>
             <h3>Your Answer</h3>
@@ -203,7 +326,6 @@ function ActiveInterview() {
             {/* Voice Area */}
 
             <div className="voice-area">
-
               <div className="mic-circle">
                 <Mic size={30} />
               </div>
@@ -241,14 +363,15 @@ function ActiveInterview() {
                   ? "Listening..."
                   : "Start Recording"}
               </button>
-
             </div>
 
             {/* Type Instead */}
 
             <button
               className="type-answer-btn"
-              onClick={() => setShowTextInput(true)}
+              onClick={() =>
+                setShowTextInput(true)
+              }
             >
               <Keyboard size={18} />
               Type instead
@@ -274,26 +397,30 @@ function ActiveInterview() {
 
             <button
               className="type-answer-btn"
-              onClick={() => setShowTextInput(false)}
+              onClick={() =>
+                setShowTextInput(false)
+              }
             >
               <Mic size={18} />
               Use voice instead
             </button>
           </>
         )}
-
       </section>
 
       {/* Bottom Actions */}
 
       <div className="interview-actions">
-
         {/* Skip */}
 
         <button
           className="skip-btn"
           onClick={handleSkip}
-          disabled={loading || questionNumber === totalQuestions}
+          disabled={
+            loading ||
+            evaluating ||
+            questionNumber === totalQuestions
+          }
         >
           <SkipForward size={18} />
           Skip
@@ -318,13 +445,19 @@ function ActiveInterview() {
           <button
             className="submit-btn"
             onClick={handleSubmit}
-            disabled={loading}
+            disabled={
+              !hasAnswer ||
+              loading ||
+              evaluating
+            }
           >
             <Send size={18} />
-            Submit Answer
+
+            {evaluating
+              ? "Evaluating..."
+              : "Submit Answer"}
           </button>
         )}
-
       </div>
     </>
   );

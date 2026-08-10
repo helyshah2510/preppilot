@@ -2,7 +2,7 @@ import "./ResumeAnalyzer.css";
 import { supabase } from "../../lib/supabase";
 import * as pdfjsLib from "pdfjs-dist";
 import mammoth from "mammoth";
-import { useRef,useState } from "react";
+import { useRef, useState } from "react";
 import Sidebar from "../../components/dashboard_1/Sidebar";
 import {
   Upload,
@@ -18,338 +18,326 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
   import.meta.url
 ).toString();
 
+// Shape returned by the "analyze-resume" edge function.
+// Keep this in sync with the `analysis` object built server-side.
+interface ResumeAnalysis {
+  overallScore: number;
+  atsReadability: number;
+  keywordMatch: number;
+  structureScore: number;
+  contentQualityScore: number;
+  matchedKeywords: string[];
+  missingKeywords: string[];
+  missingSections: string[];
+  isGenericKeywordSet: boolean;
+  strengths: string[];
+  improvements: string[];
+  suggestions: string[];
+  summary: string;
+}
+
 function ResumeAnalyzer() {
-    const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-    const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
-    const [error, setError] = useState("");
-    const [analysis, setAnalysis] = useState<any>(null);
-    const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [error, setError] = useState("");
+  const [analysis, setAnalysis] = useState<ResumeAnalysis | null>(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
 
-    const handleChooseFile = () => {
+  const handleChooseFile = () => {
     fileInputRef.current?.click();
-    };
+  };
 
-    const extractResumeText = async (file: File) => {
-        if (file.type === "application/pdf") {
-            const arrayBuffer = await file.arrayBuffer();
+  const extractResumeText = async (file: File) => {
+    if (file.type === "application/pdf") {
+      const arrayBuffer = await file.arrayBuffer();
 
-            const pdf = await pdfjsLib.getDocument({
-            data: arrayBuffer,
-            }).promise;
+      const pdf = await pdfjsLib.getDocument({
+        data: arrayBuffer,
+      }).promise;
 
-            let fullText = "";
+      let fullText = "";
 
-            for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber++) {
-                const page = await pdf.getPage(pageNumber);
+      for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber++) {
+        const page = await pdf.getPage(pageNumber);
 
-                const textContent = await page.getTextContent();
+        const textContent = await page.getTextContent();
 
-                const pageText = textContent.items
-                .map((item) => {
-                    if ("str" in item) {
-                        return item.str;
-                    }
-
-                    return "";
-                })
-                .join(" ");
-
-                fullText += pageText + "\n";
+        const pageText = textContent.items
+          .map((item) => {
+            if ("str" in item) {
+              return item.str;
             }
 
-            return fullText;
+            return "";
+          })
+          .join(" ");
+
+        fullText += pageText + "\n";
+      }
+
+      return fullText;
+    }
+
+    if (
+      file.type ===
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    ) {
+      const arrayBuffer = await file.arrayBuffer();
+
+      const result = await mammoth.extractRawText({
+        arrayBuffer,
+      });
+
+      return result.value;
+    }
+
+    throw new Error("Unsupported file type.");
+  };
+
+  const handleFileChange = async (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const file = event.target.files?.[0];
+
+    if (!file) {
+      return;
+    }
+
+    setError("");
+
+    // Check file type
+    const allowedTypes = [
+      "application/pdf",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    ];
+
+    if (!allowedTypes.includes(file.type)) {
+      setError("Please upload a PDF or DOCX file.");
+      return;
+    }
+
+    // Check file size: 5 MB
+    const maxSize = 5 * 1024 * 1024;
+
+    if (file.size > maxSize) {
+      setError("File size must be less than 5 MB.");
+      return;
+    }
+
+    setSelectedFile(file);
+
+    console.log("Selected file:", file);
+    try {
+      const text = await extractResumeText(file);
+
+      console.log("===== RESUME TEXT =====");
+      console.log(text);
+      console.log("=======================");
+      setIsAnalyzing(true);
+
+      const { data, error } = await supabase.functions.invoke(
+        "analyze-resume",
+        {
+          body: {
+            resumeText: text,
+          },
         }
+      );
 
-        if (
-            file.type ===
-            "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-        ) {
-            const arrayBuffer = await file.arrayBuffer();
+      setIsAnalyzing(false);
 
-            const result = await mammoth.extractRawText({
-                arrayBuffer,
-            });
+      if (error) {
+        console.error("Resume analysis error:", error);
+        setError("Could not analyze this resume. Please try again.");
+        return;
+      }
 
-            return result.value;
-        }
+      console.log("AI ANALYSIS:", data);
 
-        throw new Error("Unsupported file type.");
-    };
+      setAnalysis(data.analysis as ResumeAnalysis);
+    } catch (error) {
+      console.error("Error extracting resume:", error);
+      setIsAnalyzing(false);
 
-    const handleFileChange = async(
-        event: React.ChangeEvent<HTMLInputElement>
-    ) => {
-        const file = event.target.files?.[0];
+      setError("Could not read this resume. Please try another file.");
+    }
+  };
 
-        if (!file) {
-            return;
-        }
-
-        setError("");
-
-        // Check file type
-        const allowedTypes = [
-            "application/pdf",
-            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-        ];
-
-        if (!allowedTypes.includes(file.type)) {
-            setError("Please upload a PDF or DOCX file.");
-            return;
-        }
-
-        // Check file size: 5 MB
-        const maxSize = 5 * 1024 * 1024;
-
-        if (file.size > maxSize) {
-            setError("File size must be less than 5 MB.");
-            return;
-        }
-
-        setSelectedFile(file);
-
-        console.log("Selected file:", file);
-        try {
-            const text = await extractResumeText(file);
-
-            console.log("===== RESUME TEXT =====");
-            console.log(text);
-            console.log("=======================");
-            setIsAnalyzing(true);
-
-            const { data, error } = await supabase.functions.invoke(
-                "analyze-resume",
-                {
-                    body: {
-                        resumeText: text,
-                    },
-                }
-            );
-
-            setIsAnalyzing(false);
-
-            if (error) {
-                console.error("Resume analysis error:", error);
-                setError("Could not analyze this resume. Please try again.");
-                return;
-            }
-
-            console.log("AI ANALYSIS:", data);
-
-            setAnalysis(data.analysis);
-        } catch (error) {
-            console.error("Error extracting resume:", error);
-            setIsAnalyzing(false);
-
-            setError(
-                "Could not read this resume. Please try another file."
-            );
-        }
-    };
   return (
     <div className="resume-analyzer-layout">
-
       <Sidebar />
-        <main className="resume-analyzer-page">
-
+      <main className="resume-analyzer-page">
         {/* Header */}
 
         <div className="resume-header">
-            <h1>Resume Analyzer</h1>
+          <h1>Resume Analyzer</h1>
 
-            <p>
+          <p>
             Get instant feedback on how your resume reads to recruiters and ATS
             systems.
-            </p>
+          </p>
         </div>
-
 
         {/* Upload Area */}
 
         <section className="resume-upload">
-
-            <div className="upload-icon">
+          <div className="upload-icon">
             <Upload size={28} />
-            </div>
+          </div>
 
-            <h2>Drop your resume here or browse</h2>
+          <h2>Drop your resume here or browse</h2>
 
-            <p>Supports PDF, DOCX up to 5 MB</p>
-            <button
+          <p>Supports PDF, DOCX up to 5 MB</p>
+          <button
             className="choose-file-btn"
             onClick={handleChooseFile}
-            >
-            <Upload size={18} />
-            Choose File
-            </button>
+            disabled={isAnalyzing}
+          >
+            {isAnalyzing ? <RefreshCw size={18} /> : <Upload size={18} />}
+            {isAnalyzing ? "Analyzing..." : "Choose File"}
+          </button>
 
-            <input
+          <input
             ref={fileInputRef}
             type="file"
             accept=".pdf,.docx"
             onChange={handleFileChange}
             style={{ display: "none" }}
-            />
-            {error && (
-                <p
-                    style={{
-                    color: "#f87171",
-                    marginTop: "15px",
-                    marginBottom: 0,
-                    }}
-                >
-                    {error}
-                </p>
-            )}
-
+          />
+          {error && (
+            <p
+              style={{
+                color: "#f87171",
+                marginTop: "15px",
+                marginBottom: 0,
+              }}
+            >
+              {error}
+            </p>
+          )}
         </section>
-
 
         {/* Uploaded Resume */}
 
         <section className="uploaded-resume">
-
-            <div className="resume-file">
-
+          <div className="resume-file">
             <div className="file-icon">
-                <FileText size={22} />
+              <FileText size={22} />
             </div>
 
             <div>
-                <h3>{selectedFile
-                    ? selectedFile.name
-                    : "Hely_Shah_Resume.pdf"}
-                </h3>
-               <p>
-                    {selectedFile
-                        ? "Ready to analyze"
-                        : "Analyzed just now"}
-                </p>
+              <h3>
+                {selectedFile ? selectedFile.name : "No resume uploaded yet"}
+              </h3>
+              <p>
+                {isAnalyzing
+                  ? "Analyzing resume..."
+                  : selectedFile
+                  ? analysis
+                    ? "Analyzed"
+                    : "Ready to analyze"
+                  : "Upload a resume to get started"}
+              </p>
             </div>
+          </div>
 
-            </div>
-
-            <button className="reanalyze-btn">
+          <button
+            className="reanalyze-btn"
+            disabled={isAnalyzing || !selectedFile}
+          >
             <RefreshCw size={18} />
-            Re-analyze
-            </button>
-
+            {isAnalyzing ? "Analyzing..." : "Re-analyze"}
+          </button>
         </section>
-
 
         {/* Analysis Overview */}
 
         <div className="analysis-overview">
+          {/* Overall Score */}
 
-            {/* Overall Score */}
-
-            <section className="score-card">
-
+          <section className="score-card">
             <div className="score-circle">
-                <span>{analysis?.overallScore ?? 0}</span>
+              <span>{analysis?.overallScore ?? 0}</span>
             </div>
 
             <p>Overall match score</p>
+          </section>
 
-            </section>
+          {/* Metrics */}
 
-
-            {/* Metrics */}
-
-            <div className="analysis-metrics">
-
+          <div className="analysis-metrics">
             <div className="metric-card">
-
-                <div className="metric-header">
+              <div className="metric-header">
                 <span>ATS readability</span>
                 <strong className="metric-green">
-                    {analysis?.atsReadability ?? 0}%
+                  {analysis?.atsReadability ?? 0}%
                 </strong>
-                </div>
+              </div>
 
-                <div className="metric-bar">
-                    <span
-                        style={{
-                            width: `${analysis?.atsReadability ?? 0}%`,
-                        }}
-                    ></span>
-                </div>
-
+              <div className="metric-bar">
+                <span
+                  style={{
+                    width: `${analysis?.atsReadability ?? 0}%`,
+                  }}
+                ></span>
+              </div>
             </div>
-
 
             <div className="metric-card">
-
-                <div className="metric-header">
+              <div className="metric-header">
                 <span>Keyword match</span>
                 <strong className="metric-orange">
-                    {analysis?.keywordMatch ?? 0}%
+                  {analysis?.keywordMatch ?? 0}%
                 </strong>
-                </div>
+              </div>
 
-                <div className="metric-bar keyword">
-                    <span
-                    style={{
-                        width: `${analysis?.keywordMatch ?? 0}%`,
-                    }}
-                    ></span>
-                </div>
-
+              <div className="metric-bar keyword">
+                <span
+                  style={{
+                    width: `${analysis?.keywordMatch ?? 0}%`,
+                  }}
+                ></span>
+              </div>
             </div>
-
-            </div>
-
+          </div>
         </div>
-
 
         {/* Suggestions */}
 
-        <section className="suggestions-card">
-
+        {analysis && (
+          <section className="suggestions-card">
             <div className="suggestions-header">
-            <h2>Suggestions</h2>
+              <h2>Suggestions</h2>
             </div>
 
+            {analysis.suggestions.map((suggestion, i) => (
+              <div className="suggestion" key={`suggestion-${i}`}>
+                <Lightbulb size={18} />
+                <p>{suggestion}</p>
+              </div>
+            ))}
 
-            <div className="suggestion">
+            {analysis.missingKeywords.length > 0 && (
+              <div className="suggestion">
+                <AlertTriangle size={18} />
+                <p>
+                  Missing keywords:{" "}
+                  <strong>{analysis.missingKeywords.join(", ")}</strong>
+                </p>
+              </div>
+            )}
 
-            <Lightbulb size={18} />
-
-            <p>
-                Add measurable impact to your Tipsons project bullets, for example
-                lines saved or pages shipped.
-            </p>
-
-            </div>
-
-
-            <div className="suggestion">
-
-            <AlertTriangle size={18} />
-
-            <p>
-                Missing keywords for React roles:
-                <strong> state management, REST API.</strong>
-            </p>
-
-            </div>
-
-
-            <div className="suggestion">
-
-            <CheckCircle2 size={18} />
-
-            <p>
-                Strong action verbs used consistently across experience section.
-            </p>
-
-            </div>
-
-        </section>
-
-        </main>
+            {analysis.strengths.map((strength, i) => (
+              <div className="suggestion" key={`strength-${i}`}>
+                <CheckCircle2 size={18} />
+                <p>{strength}</p>
+              </div>
+            ))}
+          </section>
+        )}
+      </main>
     </div>
   );
 }

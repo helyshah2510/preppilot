@@ -100,6 +100,12 @@
   cursor: pointer;
 }
 
+.choose-file-btn:disabled,
+.reanalyze-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
 
 /* Uploaded resume */
 

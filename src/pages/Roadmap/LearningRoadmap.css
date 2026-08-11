@@ -37,25 +37,6 @@
   font-size: 0.95rem;
 }
 
-.roadmap-overall {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-
-  gap: 4px;
-}
-
-.roadmap-overall span {
-  color: #8f96a8;
-  font-size: 0.8rem;
-}
-
-.roadmap-overall strong {
-  color: #a78bfa;
-  font-size: 1.5rem;
-}
-
-
 /* Current Focus */
 
 .current-focus {
@@ -157,16 +138,6 @@
   color: #a78bfa;
 
   font-size: 0.8rem;
-}
-
-.focus-content small {
-  display: block;
-
-  color: #70788b;
-
-  margin-top: 6px;
-
-  font-size: 0.75rem;
 }
 
 .focus-btn {
@@ -323,17 +294,6 @@
   margin-bottom: 3px;
 }
 
-.track-header span {
-  color: #777f91;
-
-  font-size: 0.75rem;
-}
-
-.track-header strong {
-  color: #a78bfa;
-
-  font-size: 0.9rem;
-}
 
 
 /* Description */
@@ -388,12 +348,6 @@
   justify-content: space-between;
 
   margin-top: 12px;
-}
-
-.track-footer span {
-  color: #70788b;
-
-  font-size: 0.75rem;
 }
 
 .track-footer button {

@@ -1,4 +1,7 @@
 import "./LearningRoadmap.css";
+import { useEffect, useState } from "react";
+import { supabase } from "../../lib/supabase";
+import { useNavigate } from "react-router-dom";
 import Sidebar from "../../components/dashboard_1/Sidebar";
 import {
   Code2,
@@ -10,6 +13,49 @@ import {
 } from "lucide-react";
 
 function LearningRoadmap() {
+  const navigate=useNavigate();
+  const [currentFocus, setCurrentFocus] = useState<{
+    topic: string;
+    difficulty: string;
+  } | null>(null);
+  const [focusLoading, setFocusLoading] = useState(true);
+
+  useEffect(() => {
+    const loadCurrentFocus = async () => {
+      setFocusLoading(true);
+
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (!user) {
+        setFocusLoading(false);
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from("dsa_results")
+        .select("topic, difficulty, created_at")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (error) {
+        console.error(error);
+        setFocusLoading(false);
+        return;
+      }
+
+      if (data) {
+        setCurrentFocus({ topic: data.topic, difficulty: data.difficulty });
+      }
+
+      setFocusLoading(false);
+    };
+
+    loadCurrentFocus();
+  }, []);
   return (
     <div className="roadmap-layout">
 
@@ -29,13 +75,7 @@ function LearningRoadmap() {
             </p>
           </div>
 
-          <div className="roadmap-overall">
-            <span>Overall Progress</span>
-            <strong>62%</strong>
-          </div>
-
         </div>
-
 
         {/* Current Focus */}
 
@@ -51,12 +91,26 @@ function LearningRoadmap() {
               CURRENT FOCUS
             </span>
 
-            <h2>React Interview Preparation</h2>
+            {!focusLoading && currentFocus ? (
+              <>
+                <h2>{currentFocus.topic} Practice</h2>
 
-            <p>
-              Strengthen your React concepts and prepare for
-              technical interview questions.
-            </p>
+                <p>
+                  Strengthen your {currentFocus.topic} concepts at{" "}
+                  {currentFocus.difficulty} level and prepare for
+                  technical interview questions.
+                </p>
+              </>
+            ) : (
+              <>
+                <h2>React Interview Preparation</h2>
+
+                <p>
+                  Strengthen your React concepts and prepare for
+                  technical interview questions.
+                </p>
+              </>
+            )}
 
             <div className="focus-progress-row">
 
@@ -64,17 +118,14 @@ function LearningRoadmap() {
                 <span style={{ width: "65%" }}></span>
               </div>
 
-              <strong>65%</strong>
-
             </div>
-
-            <small>
-              5 of 8 topics completed
-            </small>
 
           </div>
 
-          <button className="focus-btn">
+          <button
+            className="focus-btn"
+            onClick={() => navigate("/dsa-practice")}
+          >
             Continue
             <ArrowRight size={17} />
           </button>
@@ -115,8 +166,6 @@ function LearningRoadmap() {
                   <span>Interview Prep</span>
                 </div>
 
-                <strong>75%</strong>
-
               </div>
 
               <p className="track-description">
@@ -130,9 +179,7 @@ function LearningRoadmap() {
 
               <div className="track-footer">
 
-                <span>6 of 8 topics</span>
-
-                <button>
+                <button onClick={()=> navigate(`/mock-interview`)}>
                   Continue
                   <ArrowRight size={15} />
                 </button>
@@ -157,8 +204,6 @@ function LearningRoadmap() {
                   <span>Interview Prep</span>
                 </div>
 
-                <strong>65%</strong>
-
               </div>
 
               <p className="track-description">
@@ -172,9 +217,7 @@ function LearningRoadmap() {
 
               <div className="track-footer">
 
-                <span>5 of 8 topics</span>
-
-                <button>
+                <button onClick={()=> navigate(`/mock-interview`)}>
                   Continue
                   <ArrowRight size={15} />
                 </button>
@@ -199,8 +242,6 @@ function LearningRoadmap() {
                   <span>Interview</span>
                 </div>
 
-                <strong>40%</strong>
-
               </div>
 
               <p className="track-description">
@@ -214,9 +255,7 @@ function LearningRoadmap() {
 
               <div className="track-footer">
 
-                <span>4 of 10 topics</span>
-
-                <button>
+                <button onClick={()=> navigate(`/mock-interview`)}>
                   Continue
                   <ArrowRight size={15} />
                 </button>
@@ -241,8 +280,6 @@ function LearningRoadmap() {
                   <span>Interview</span>
                 </div>
 
-                <strong>55%</strong>
-
               </div>
 
               <p className="track-description">
@@ -256,9 +293,7 @@ function LearningRoadmap() {
 
               <div className="track-footer">
 
-                <span>5 of 9 topics</span>
-
-                <button>
+                <button onClick={()=> navigate(`/mock-interview`)}>
                   Continue
                   <ArrowRight size={15} />
                 </button>
@@ -283,8 +318,6 @@ function LearningRoadmap() {
                   <span>Problem Solving</span>
                 </div>
 
-                <strong>50%</strong>
-
               </div>
 
               <p className="track-description">
@@ -298,9 +331,7 @@ function LearningRoadmap() {
 
               <div className="track-footer">
 
-                <span>24 of 48 solved</span>
-
-                <button>
+                <button onClick={()=> navigate(`/dsa-practice`)}>
                   Practice
                   <ArrowRight size={15} />
                 </button>

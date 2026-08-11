@@ -10,6 +10,7 @@ import ResumeAnalyzer from "./pages/ResumeAnalyzer/ResumeAnalyzer";
 import DSAPractice from "./pages/DSA/DSAprac";
 import LearningRoadmap from "./pages/Roadmap/LearningRoadmap";
 import Progress from "./pages/progress/Progress";
+import DSAQues from "./pages/DSA/DSAQues";
 
 function App() {
   return (
@@ -29,6 +30,7 @@ function App() {
         <Route path="/dsa-practice" element={<DSAPractice/>}/>
         <Route path="/learning-roadmap" element={<LearningRoadmap/>}/>
         <Route path="/progress" element={<Progress/>}/>
+        <Route path="/dsa-question/:topic/:difficulty" element={<DSAQues/>}/>
 
       </Routes>
   );

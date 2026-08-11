@@ -1,4 +1,6 @@
 import "./DSAprac.css";
+import { useNavigate } from "react-router-dom";
+import { useState } from "react";
 import Sidebar from "../../components/dashboard_1/Sidebar";
 import {
   Search,
@@ -8,7 +10,27 @@ import {
   Circle,
 } from "lucide-react";
 
+interface Topic {
+  name: string;
+  icon: string;
+  solved: number;
+  total: number;
+}
+
+const topics: Topic[] = [
+  { name: "Arrays", icon: "A", solved: 12, total: 20 },
+  { name: "Strings", icon: "S", solved: 8, total: 15 },
+  { name: "Linked Lists", icon: "L", solved: 4, total: 12 },
+  { name: "Stack & Queue", icon: "S", solved: 6, total: 10 },
+  { name: "Trees", icon: "T", solved: 5, total: 15 },
+  { name: "Graphs", icon: "G", solved: 3, total: 12 },
+];
+
 function DSAPractice() {
+    const navigate = useNavigate();
+    //const [activeTopic, setActiveTopic] = useState<string | null>(null);
+    const [difficulty, setDifficulty] = useState<string | null>(null);
+    const [filterOpen, setFilterOpen] = useState(false);
   return (
     <div className="dsa-layout">
         <Sidebar/>
@@ -46,10 +68,31 @@ function DSAPractice() {
             />
             </div>
 
-            <button className="difficulty-filter">
-            All Difficulties
-            <ChevronDown size={18} />
-            </button>
+            <div className="difficulty-filter-wrapper">
+                <button
+                    className="difficulty-filter"
+                    onClick={() => setFilterOpen((open) => !open)}
+                >
+                    {difficulty ?? "All Difficulties"}
+                    <ChevronDown size={18} />
+                </button>
+
+                {filterOpen && (
+                    <div className="difficulty-menu">
+                        {["All Difficulties", "Easy", "Medium", "Hard"].map((level) => (
+                            <button
+                            key={level}
+                            onClick={() => {
+                                setDifficulty(level === "All Difficulties" ? null : level);
+                                setFilterOpen(false);
+                            }}
+                            >
+                                {level}
+                            </button>
+                         ))}
+                    </div>
+                )}
+            </div>
 
         </div>
 
@@ -59,118 +102,70 @@ function DSAPractice() {
         <section className="dsa-section">
 
             <div className="section-title">
-            <h2>Topics</h2>
-            <p>Choose a topic to practice.</p>
+                <h2>Topics</h2>
+                <p>Choose a topic to practice.</p>
             </div>
-
 
             <div className="topic-grid">
 
-            <div className="topic-card">
-                <div className="topic-top">
-                <div className="topic-icon arrays">A</div>
+                {topics.map((topic) => {
+                    const percent = Math.round(
+                        (topic.solved / topic.total) * 100
+                    );
 
-                <span>12 / 20</span>
-                </div>
+                    return (
+                        <div className="topic-card" key={topic.name}>
 
-                <h3>Arrays</h3>
+                            <div className="topic-top">
+                                <div
+                                    className={`topic-icon ${topic.name
+                                        .toLowerCase()
+                                        .replace(/\s|&/g, "")}`}
+                                >
+                                    {topic.icon}
+                                </div>
 
-                <p>20 problems</p>
+                                <span>
+                                    {topic.solved} / {topic.total}
+                                </span>
+                            </div>
 
-                <div className="topic-progress">
-                <span style={{ width: "60%" }}></span>
-                </div>
-            </div>
+                            <h3>{topic.name}</h3>
 
+                            <p>{topic.total} problems</p>
 
-            <div className="topic-card">
-                <div className="topic-top">
-                <div className="topic-icon strings">S</div>
+                            <div className="topic-progress">
+                                <span
+                                    style={{ width: `${percent}%` }}
+                                ></span>
+                            </div>
 
-                <span>8 / 15</span>
-                </div>
+                            <button
+                                className="start-practice-btn"
+                                onClick={() => {
+                                    if (!difficulty) {
+                                        alert("Please select a difficulty first.");
+                                        return;
+                                    }
 
-                <h3>Strings</h3>
+                                    navigate(
+                                        `/dsa-question/${encodeURIComponent(
+                                            topic.name
+                                        )}/${difficulty.toLowerCase()}`
+                                    );
+                                }}
+                            >
+                                Practice
+                                <ArrowRight size={17} />
+                            </button>
 
-                <p>15 problems</p>
-
-                <div className="topic-progress">
-                <span style={{ width: "53%" }}></span>
-                </div>
-            </div>
-
-
-            <div className="topic-card">
-                <div className="topic-top">
-                <div className="topic-icon linked-list">L</div>
-
-                <span>4 / 12</span>
-                </div>
-
-                <h3>Linked Lists</h3>
-
-                <p>12 problems</p>
-
-                <div className="topic-progress">
-                <span style={{ width: "33%" }}></span>
-                </div>
-            </div>
-
-
-            <div className="topic-card">
-                <div className="topic-top">
-                <div className="topic-icon stack">S</div>
-
-                <span>6 / 10</span>
-                </div>
-
-                <h3>Stack & Queue</h3>
-
-                <p>10 problems</p>
-
-                <div className="topic-progress">
-                <span style={{ width: "60%" }}></span>
-                </div>
-            </div>
-
-
-            <div className="topic-card">
-                <div className="topic-top">
-                <div className="topic-icon trees">T</div>
-
-                <span>5 / 15</span>
-                </div>
-
-                <h3>Trees</h3>
-
-                <p>15 problems</p>
-
-                <div className="topic-progress">
-                <span style={{ width: "33%" }}></span>
-                </div>
-            </div>
-
-
-            <div className="topic-card">
-                <div className="topic-top">
-                <div className="topic-icon graphs">G</div>
-
-                <span>3 / 12</span>
-                </div>
-
-                <h3>Graphs</h3>
-
-                <p>12 problems</p>
-
-                <div className="topic-progress">
-                <span style={{ width: "25%" }}></span>
-                </div>
-            </div>
+                        </div>
+                    );
+                })}
 
             </div>
 
         </section>
-
 
         {/* Recommended Problems */}
 

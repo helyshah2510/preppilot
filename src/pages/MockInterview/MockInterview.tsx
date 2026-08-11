@@ -27,11 +27,6 @@ function MockInterview() {
               Practice real interview questions and get AI-powered feedback.
             </p>
           </div>
-
-          <button className="history-btn">
-            <History size={18} />
-            Interview History
-          </button>
         </div>
 
         <div className="interview-heading">

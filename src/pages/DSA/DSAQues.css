@@ -1,0 +1,184 @@
+.dsa-question-page {
+  min-height: 100vh;
+  padding: 40px 50px;
+  background: #080a17;
+  color: white;
+}
+
+.dsa-question-container {
+  max-width: 1000px;
+  margin: 0 auto;
+}
+
+/* Header */
+
+.dsa-question-header {
+  margin-bottom: 25px;
+}
+
+.dsa-question-header h1 {
+  font-size: 1.6rem;
+  margin-bottom: 8px;
+}
+
+.dsa-question-meta {
+  color: #8f96a8;
+  font-size: 0.85rem;
+}
+
+/* Question Card */
+
+.dsa-question-card {
+  padding: 28px;
+  background: #111623;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 16px;
+}
+
+.dsa-question-card h2 {
+  font-size: 1.35rem;
+  margin-bottom: 16px;
+}
+
+.dsa-question-card p {
+  color: #c4c8d4;
+  font-size: 0.9rem;
+  line-height: 1.7;
+}
+
+/* text area */
+
+.text-answer-area {
+  margin-top: 28px;
+}
+
+.text-answer-area textarea {
+  width: 100%;
+  min-height: 220px;
+  padding: 16px;
+
+  resize: vertical;
+
+  background: #0b0e1a;
+  color: #e5e7eb;
+
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+
+  outline: none;
+
+  font-family: monospace;
+  font-size: 0.9rem;
+  line-height: 1.6;
+}
+
+.text-answer-area textarea:focus {
+  border-color: rgba(139, 92, 246, 0.5);
+}
+
+/* buttons */
+
+.dsa-action-buttons {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 16px;
+}
+
+.save-exit-btn,
+.next-question-btn,
+.submit-btn {
+  padding: 10px 16px;
+  border-radius: 8px;
+
+  font-size: 0.85rem;
+  font-weight: 600;
+
+  cursor: pointer;
+}
+
+.save-exit-btn {
+  background: transparent;
+  color: #aeb4c3;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.next-question-btn,
+.submit-btn {
+  background: #8b5cf6;
+  color: white;
+  border: 1px solid #8b5cf6;
+}
+
+.save-exit-btn:hover {
+  background: #111623;
+}
+
+.next-question-btn:hover,
+.submit-btn:hover {
+  background: #7c3aed;
+}
+
+/* Sections */
+
+.dsa-question-section {
+  margin-top: 28px;
+}
+
+.dsa-question-section h3 {
+  font-size: 1rem;
+  margin-bottom: 12px;
+}
+
+/* Examples */
+
+.dsa-example {
+  margin-bottom: 12px;
+  padding: 12px 15px;
+  background: #0b0e1a;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 8px;
+}
+
+.dsa-example p {
+  margin: 3px 0;
+  font-size: 0.85rem;
+}
+
+/* Constraints */
+
+.dsa-constraints {
+  padding-left: 20px;
+  color: #c4c8d4;
+}
+
+.dsa-constraints li {
+  margin-bottom: 7px;
+  font-size: 0.85rem;
+}
+
+/* Hint */
+
+.dsa-hint {
+  padding: 15px 17px;
+  background: rgba(139, 92, 246, 0.08);
+  border: 1px solid rgba(139, 92, 246, 0.25);
+  border-radius: 10px;
+}
+
+.dsa-hint p {
+  margin: 0;
+  font-size: 0.85rem;
+  color: #c4b5fd;
+}
+
+/* Loading / Error */
+
+.dsa-loading,
+.dsa-error {
+  color: #8f96a8;
+  font-size: 0.9rem;
+}
+
+.dsa-error {
+  color: #f87171;
+}

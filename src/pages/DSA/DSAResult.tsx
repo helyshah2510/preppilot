@@ -1,95 +1,235 @@
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "../../lib/supabase";
+import "./DSAResult.css";
 
-interface Example {
-  input: string;
-  output: string;
+interface PerformanceBreakdown {
+  logic: number;
+  problemSolving: number;
+  syntax: number;
+  optimization: number;
 }
 
-interface Question {
+interface WeakArea {
   title: string;
-  problem: string;
-  examples: Example[];
-  constraints: string[];
-  hint: string;
+  description: string;
 }
 
-interface DSAResultProps {
-  topic: string | null;
-  difficulty: string | null;
+interface Recommendation {
+  title: string;
+  detail: string;
 }
 
-function DSAResult({ topic, difficulty }: DSAResultProps) {
-  const [question, setQuestion] = useState<Question | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+interface QuestionResult {
+  questionNumber: number;
+  title: string;
+  userAnswer: string;
+  score: number;
+  feedback: string;
+}
+
+interface DSAResultData {
+  id: string;
+  topic: string;
+  difficulty: string;
+  overall_score: number;
+  strong_count: number;
+  needs_improvement_count: number;
+  overall_feedback: string;
+  performance_breakdown: PerformanceBreakdown;
+  weak_areas: WeakArea[];
+  recommendations: Recommendation[];
+  question_results: QuestionResult[];
+}
+
+function DSAResult() {
+  const { topic, difficulty } = useParams();
+  const navigate = useNavigate();
+
+  const [result, setResult] = useState<DSAResultData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   useEffect(() => {
     if (!topic || !difficulty) return;
 
-    let cancelled = false;
-
-    async function generate() {
-      setQuestion(null);
-      setError(null);
+    const loadResult = async () => {
       setLoading(true);
+      setError("");
 
-      const { data, error: fnError } = await supabase.functions.invoke("generate-dsa", {
-        body: { topic, difficulty },
-      });
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
 
-      if (cancelled) return;
+      if (!user) {
+        setError("Please log in to view your results.");
+        setLoading(false);
+        return;
+      }
+
+      const { data, error: fetchError } = await supabase
+        .from("dsa_results")
+        .select("*")
+        .eq("user_id", user.id)
+        .eq("topic", topic)
+        .eq("difficulty", difficulty)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (fetchError) {
+        console.error(fetchError);
+        setError("Could not load your result.");
+        setLoading(false);
+        return;
+      }
+
+      if (!data) {
+        setError("No result found for this topic and difficulty yet.");
+        setLoading(false);
+        return;
+      }
+
+      setResult(data as DSAResultData);
       setLoading(false);
-
-      if (fnError) {
-        setError(fnError.message || "Failed to generate question");
-        return;
-      }
-      if (data?.error) {
-        setError(data.error);
-        return;
-      }
-
-      setQuestion(data.question as Question);
-    }
-
-    generate();
-
-    return () => {
-      cancelled = true;
     };
+
+    loadResult();
   }, [topic, difficulty]);
 
-  if (!topic || !difficulty) return null;
+  if (loading) {
+    return <h2>Loading your results...</h2>;
+  }
+
+  if (error) {
+    return <p>{error}</p>;
+  }
+
+  if (!result) {
+    return null;
+  }
+
+  const breakdown = result.performance_breakdown;
 
   return (
-    <section className="dsa-section">
-      {loading && <p>Generating question…</p>}
-      {error && <p className="dsa-error">{error}</p>}
+    <main className="dsa-result-page">
+      <div className="dsa-result-container">
 
-      {question && (
-        <>
-          <div className="section-title">
-            <h2>{question.title}</h2>
-            <p>{topic} · {difficulty}</p>
+        {/* Header */}
+        <div className="dsa-result-header">
+          <h1>DSA Practice Result</h1>
+          <p className="dsa-result-meta">
+            {result.topic} · {result.difficulty}
+          </p>
+
+          <div className="dsa-result-score">
+            <span className="score-value">{result.overall_score} / 100</span>
+            <span className="score-label">Overall Score</span>
           </div>
 
-          <p>{question.problem}</p>
+          <div className="dsa-result-summary-stats">
+            <span>{result.question_results.length} Questions</span>
+            <span>{result.strong_count} Strong</span>
+            <span>{result.needs_improvement_count} Need Improvement</span>
+          </div>
+        </div>
 
-          <h4>Examples</h4>
-          {question.examples.map((ex, i) => (
-            <p key={i}>Input: {ex.input} → Output: {ex.output}</p>
+        {/* Overall AI Analysis */}
+        <div className="dsa-result-section">
+          <h3>Overall Performance</h3>
+          <p>{result.overall_feedback}</p>
+        </div>
+
+        {/* Performance Breakdown */}
+        <div className="dsa-result-section">
+          <h3>Performance Breakdown</h3>
+          <p className="dsa-result-note">AI-estimated performance indicators</p>
+
+          {[
+            { label: "Logic", value: breakdown.logic },
+            { label: "Problem Solving", value: breakdown.problemSolving },
+            { label: "Syntax", value: breakdown.syntax },
+            { label: "Optimization", value: breakdown.optimization },
+          ].map((row) => (
+            <div className="breakdown-row" key={row.label}>
+              <span className="breakdown-label">{row.label}</span>
+              <div className="breakdown-bar-track">
+                <div
+                  className="breakdown-bar-fill"
+                  style={{ width: `${row.value}%` }}
+                />
+              </div>
+              <span className="breakdown-percent">{row.value}%</span>
+            </div>
           ))}
+        </div>
 
-          <h4>Constraints</h4>
-          <ul>
-            {question.constraints.map((c, i) => <li key={i}>{c}</li>)}
-          </ul>
+        {/* Weak Areas */}
+        {result.weak_areas.length > 0 && (
+          <div className="dsa-result-section">
+            <h3>Areas to Improve</h3>
+            {result.weak_areas.map((area, i) => (
+              <div className="weak-area-item" key={i}>
+                <p className="weak-area-title">⚠ {area.title}</p>
+                <p className="weak-area-desc">{area.description}</p>
+              </div>
+            ))}
+          </div>
+        )}
 
-          <p>💡 {question.hint}</p>
-        </>
-      )}
-    </section>
+        {/* Recommended Practice */}
+        {result.recommendations.length > 0 && (
+          <div className="dsa-result-section">
+            <h3>Recommended Practice</h3>
+            <ol className="recommendation-list">
+              {result.recommendations.map((rec, i) => (
+                <li key={i}>
+                  <span className="recommendation-title">{rec.title}</span>
+                  <p className="recommendation-detail">{rec.detail}</p>
+                </li>
+              ))}
+            </ol>
+          </div>
+        )}
+
+        {/* Question-by-question */}
+        <div className="dsa-result-section">
+          <h3>Question-by-Question</h3>
+
+          {result.question_results
+            .sort((a, b) => a.questionNumber - b.questionNumber)
+            .map((q) => (
+              <div className="question-result-item" key={q.questionNumber}>
+                <div className="question-result-header">
+                  <span>
+                    Question {q.questionNumber} — {q.title}
+                  </span>
+                  <span className="question-result-score">{q.score} / 10</span>
+                </div>
+
+                <p className="question-result-label">Your Answer</p>
+                <pre className="question-result-answer">
+                  {q.userAnswer || "(no answer submitted)"}
+                </pre>
+
+                <p className="question-result-label">AI Feedback</p>
+                <p className="question-result-feedback">{q.feedback}</p>
+              </div>
+            ))}
+        </div>
+
+        {/* Bottom buttons */}
+        <div className="dsa-result-actions">
+          <button
+            className="back-to-practice-btn"
+            onClick={() => navigate("/dsa-practice")}
+          >
+            Back to DSA Practice
+          </button>
+        </div>
+
+      </div>
+    </main>
   );
 }
 

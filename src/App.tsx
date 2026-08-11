@@ -11,6 +11,7 @@ import DSAPractice from "./pages/DSA/DSAprac";
 import LearningRoadmap from "./pages/Roadmap/LearningRoadmap";
 import Progress from "./pages/progress/Progress";
 import DSAQues from "./pages/DSA/DSAQues";
+import DSAResult from "./pages/DSA/DSAResult";
 
 function App() {
   return (
@@ -31,6 +32,7 @@ function App() {
         <Route path="/learning-roadmap" element={<LearningRoadmap/>}/>
         <Route path="/progress" element={<Progress/>}/>
         <Route path="/dsa-question/:topic/:difficulty" element={<DSAQues/>}/>
+        <Route path="/dsa-question/:topic/:difficulty/result" element={<DSAResult/>}/>
 
       </Routes>
   );

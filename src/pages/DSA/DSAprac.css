@@ -34,7 +34,7 @@
   color: #8f96a8;
 }
 
-.dsa-progress {
+/* .dsa-progress {
   display: flex;
   flex-direction: column;
   align-items: flex-end;
@@ -49,7 +49,7 @@
 
 .dsa-progress strong {
   color: #a78bfa;
-}
+} */
 
 
 /* Controls */

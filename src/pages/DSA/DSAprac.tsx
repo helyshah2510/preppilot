@@ -1,6 +1,7 @@
 import "./DSAprac.css";
+import { useEffect, useState } from "react";
+import { supabase } from "../../lib/supabase";
 import { useNavigate } from "react-router-dom";
-import { useState } from "react";
 import Sidebar from "../../components/dashboard_1/Sidebar";
 import {
   Search,
@@ -17,13 +18,20 @@ interface Topic {
   total: number;
 }
 
+interface Recommendation {
+  title: string;
+  detail: string;
+  difficulty: string;
+  completed: boolean;
+}
+
 const topics: Topic[] = [
-  { name: "Arrays", icon: "A", solved: 12, total: 20 },
-  { name: "Strings", icon: "S", solved: 8, total: 15 },
-  { name: "Linked Lists", icon: "L", solved: 4, total: 12 },
-  { name: "Stack & Queue", icon: "S", solved: 6, total: 10 },
-  { name: "Trees", icon: "T", solved: 5, total: 15 },
-  { name: "Graphs", icon: "G", solved: 3, total: 12 },
+  { name: "Arrays", icon: "A",solved: 5, total: 10 },
+  { name: "Strings", icon: "S", solved: 5,total: 10 },
+  { name: "Linked Lists", icon: "L",solved: 5, total: 10 },
+  { name: "Stack & Queue", icon: "S",solved: 5, total: 10 },
+  { name: "Trees", icon: "T", solved: 5,total: 10 },
+  { name: "Graphs", icon: "G",solved: 5,total: 10 },
 ];
 
 function DSAPractice() {
@@ -31,6 +39,79 @@ function DSAPractice() {
     //const [activeTopic, setActiveTopic] = useState<string | null>(null);
     const [difficulty, setDifficulty] = useState<string | null>(null);
     const [filterOpen, setFilterOpen] = useState(false);
+    const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
+    const [recLoading, setRecLoading] = useState(true);
+
+    useEffect(() => {
+        const loadRecommendations = async () => {
+            setRecLoading(true);
+
+            const {
+                data: { user },
+            } = await supabase.auth.getUser();
+
+            if (!user) {
+                setRecLoading(false);
+                return;
+            }
+
+            const { data: results, error } = await supabase
+                .from("dsa_results")
+                .select("topic, difficulty, recommendations, created_at")
+                .eq("user_id", user.id)
+                .order("created_at", { ascending: false });
+
+            if (error || !results) {
+                console.error(error);
+                setRecLoading(false);
+                return;
+            }
+
+            // Which topic+difficulty combos the user already has a result for
+            const completedKeys = new Set(
+                results.map(
+                    (r: any) => `${r.topic.toLowerCase()}|${r.difficulty.toLowerCase()}`
+                )
+            );
+
+            const difficultyFromText = (text: string): string => {
+                const match = text.match(/easy|medium|hard/i);
+                return match ? match[0].toLowerCase() : "easy";
+            };
+
+            // Flatten recommendations across all results, most recent first,
+            // de-duped by title (first occurrence = most recent, since results
+            // are already ordered by created_at desc)
+            const seen = new Map<string, Recommendation>();
+
+            for (const result of results) {
+                const recs = (result.recommendations ?? []) as {
+                    title: string;
+                    detail: string;
+                }[];
+
+                for (const rec of recs) {
+                    if (seen.has(rec.title)) continue;
+
+                    const difficulty = difficultyFromText(rec.detail);
+                    const key = `${rec.title.toLowerCase()}|${difficulty}`;
+
+                    seen.set(rec.title, {
+                        title: rec.title,
+                        detail: rec.detail,
+                        difficulty,
+                        completed: completedKeys.has(key),
+                    });
+                }
+            }
+
+            setRecommendations(Array.from(seen.values()).slice(0, 4));
+            setRecLoading(false);
+        };
+
+        loadRecommendations();
+    }, []);
+
   return (
     <div className="dsa-layout">
         <Sidebar/>
@@ -48,10 +129,10 @@ function DSAPractice() {
             </p>
             </div>
 
-            <div className="dsa-progress">
+           {/*<div className="dsa-progress">
             <span>Your Progress</span>
             <strong>24 / 50 solved</strong>
-            </div>
+            </div> */}
         </div>
 
 
@@ -124,10 +205,6 @@ function DSAPractice() {
                                 >
                                     {topic.icon}
                                 </div>
-
-                                <span>
-                                    {topic.solved} / {topic.total}
-                                </span>
                             </div>
 
                             <h3>{topic.name}</h3>
@@ -179,99 +256,56 @@ function DSAPractice() {
             </p>
             </div>
 
-
             <div className="problem-list">
 
-            <div className="problem-row">
+                {recLoading && <p>Loading recommendations...</p>}
 
-                <div className="problem-status">
-                <Circle size={20} />
-                </div>
+                {!recLoading && recommendations.length === 0 && (
+                    <p>Complete a practice session to see recommendations here.</p>
+                )}
 
-                <div className="problem-info">
-                <h3>Two Sum</h3>
-                <p>Arrays · Hash Map</p>
-                </div>
+                {!recLoading &&
+                    recommendations.map((rec) => (
+                        <div className="problem-row" key={rec.title}>
 
-                <span className="difficulty easy">
-                Easy
-                </span>
+                            <div
+                                className={`problem-status ${
+                                    rec.completed ? "completed" : ""
+                                }`}
+                            >
+                                {rec.completed ? (
+                                    <CheckCircle2 size={20} />
+                                ) : (
+                                    <Circle size={20} />
+                                )}
+                            </div>
 
-                <button className="solve-btn">
-                Solve
-                <ArrowRight size={17} />
-                </button>
+                            <div className="problem-info">
+                                <h3>{rec.title}</h3>
+                                <p>{rec.detail}</p>
+                            </div>
 
-            </div>
+                            <span className={`difficulty ${rec.difficulty}`}>
+                                {rec.difficulty.charAt(0).toUpperCase() +
+                                    rec.difficulty.slice(1)}
+                            </span>
 
+                            <button
+                                className="solve-btn"
+                                onClick={() =>
+                                    navigate(
+                                        `/dsa-question/${encodeURIComponent(
+                                            rec.title
+                                        )}/${rec.difficulty}`
+                                    )
+                                }
+                            >
+                                {rec.completed ? "Review" : "Solve"}
+                                <ArrowRight size={17} />
+                            </button>
 
-            <div className="problem-row">
-
-                <div className="problem-status completed">
-                <CheckCircle2 size={20} />
-                </div>
-
-                <div className="problem-info">
-                <h3>Valid Parentheses</h3>
-                <p>Stack · Strings</p>
-                </div>
-
-                <span className="difficulty easy">
-                Easy
-                </span>
-
-                <button className="solve-btn">
-                Review
-                <ArrowRight size={17} />
-                </button>
-
-            </div>
-
-
-            <div className="problem-row">
-
-                <div className="problem-status">
-                <Circle size={20} />
-                </div>
-
-                <div className="problem-info">
-                <h3>Longest Substring Without Repeating Characters</h3>
-                <p>Strings · Sliding Window</p>
-                </div>
-
-                <span className="difficulty medium">
-                Medium
-                </span>
-
-                <button className="solve-btn">
-                Solve
-                <ArrowRight size={17} />
-                </button>
-
-            </div>
-
-
-            <div className="problem-row">
-
-                <div className="problem-status">
-                <Circle size={20} />
-                </div>
-
-                <div className="problem-info">
-                <h3>Binary Tree Level Order Traversal</h3>
-                <p>Trees · BFS</p>
-                </div>
-
-                <span className="difficulty medium">
-                Medium
-                </span>
-
-                <button className="solve-btn">
-                Solve
-                <ArrowRight size={17} />
-                </button>
-
-            </div>
+                        </div>
+                    ))}
 
             </div>
 

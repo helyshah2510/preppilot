@@ -7,7 +7,6 @@ import {
   Atom,
   FileCode2,
   ArrowRight,
-  History,
 } from "lucide-react";
 
 function MockInterview() {
